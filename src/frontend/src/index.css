@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Figtree";
+  src: url("/assets/fonts/Figtree.woff2") format("woff2");
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("/assets/fonts/Fraunces.woff2") format("woff2");
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+    /* Cream background */
+    --background: 0.93 0.025 85;
+    --foreground: 0.22 0.05 45;
+    /* White cards */
+    --card: 0.98 0.01 85;
+    --card-foreground: 0.22 0.05 45;
+    --popover: 0.98 0.01 85;
+    --popover-foreground: 0.22 0.05 45;
+    /* Forest green primary */
+    --primary: 0.28 0.07 152;
+    --primary-foreground: 0.93 0.025 85;
+    /* Gold/beige secondary */
+    --secondary: 0.84 0.05 85;
+    --secondary-foreground: 0.22 0.05 45;
+    /* Muted cream */
+    --muted: 0.9 0.02 85;
+    --muted-foreground: 0.48 0.02 50;
+    /* Mid green accent */
+    --accent: 0.51 0.1 148;
+    --accent-foreground: 0.98 0.01 85;
+    /* Destructive red */
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+    --border: 0.88 0.025 85;
+    --input: 0.88 0.025 85;
+    --ring: 0.51 0.1 148;
+    /* Charts */
+    --chart-1: 0.51 0.1 148;
+    --chart-2: 0.65 0.1 145;
+    --chart-3: 0.577 0.245 27.325;
+    --chart-4: 0.84 0.05 85;
+    --chart-5: 0.28 0.07 152;
+    /* Sidebar */
+    --sidebar: 0.28 0.07 152;
+    --sidebar-foreground: 0.93 0.025 85;
+    --sidebar-primary: 0.84 0.05 85;
+    --sidebar-primary-foreground: 0.22 0.05 45;
+    --sidebar-accent: 0.35 0.08 148;
+    --sidebar-accent-foreground: 0.93 0.025 85;
+    --sidebar-border: 0.35 0.08 148;
+    --sidebar-ring: 0.84 0.05 85;
+    /* Custom estate colors */
+    --estate-green: 0.28 0.07 152;
+    --estate-green-mid: 0.51 0.1 148;
+    --estate-green-light: 0.65 0.1 145;
+    --estate-brown: 0.28 0.07 40;
+    --estate-gold: 0.84 0.05 85;
+    --estate-cream: 0.93 0.025 85;
+    --estate-text: 0.22 0.05 45;
+    --estate-text-muted: 0.48 0.02 50;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+}
