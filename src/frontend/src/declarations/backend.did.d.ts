@@ -22,6 +22,23 @@ export interface AnnualRecord {
   'workersTotalSalary' : bigint,
   'miscellaneous' : bigint,
 }
+export interface AnnualExtras {
+  'yearLabel' : string,
+  'openingBalance' : bigint,
+  'closingBalance' : bigint,
+}
+export interface IncomeItem {
+  'id' : bigint,
+  'yearLabel' : string,
+  'name' : string,
+  'amount' : bigint,
+}
+export interface ExpenseItem {
+  'id' : bigint,
+  'yearLabel' : string,
+  'name' : string,
+  'amount' : bigint,
+}
 export interface Equipment {
   'id' : bigint,
   'purchaseDate' : string,
@@ -88,6 +105,7 @@ export interface _SERVICE {
   'deleteWorker' : ActorMethod<[bigint], boolean>,
   'getAllAnnualRecords' : ActorMethod<[], Array<AnnualRecord>>,
   'getAnnualRecord' : ActorMethod<[string], [] | [AnnualRecord]>,
+  'getAnnualExtras' : ActorMethod<[string], [] | [AnnualExtras]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getEquipment' : ActorMethod<[], Array<Equipment>>,
@@ -101,6 +119,7 @@ export interface _SERVICE {
     [string, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
     undefined
   >,
+  'saveAnnualExtras' : ActorMethod<[string, bigint, bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'updateEquipment' : ActorMethod<
     [bigint, string, string, string, bigint, string, string],
@@ -118,6 +137,12 @@ export interface _SERVICE {
     [bigint, string, string, string, string],
     boolean
   >,
+  'addIncomeItem' : ActorMethod<[string, string, bigint], bigint>,
+  'deleteIncomeItem' : ActorMethod<[bigint], boolean>,
+  'getIncomeItemsByYear' : ActorMethod<[string], Array<IncomeItem>>,
+  'addExpenseItem' : ActorMethod<[string, string, bigint], bigint>,
+  'deleteExpenseItem' : ActorMethod<[bigint], boolean>,
+  'getExpenseItemsByYear' : ActorMethod<[string], Array<ExpenseItem>>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

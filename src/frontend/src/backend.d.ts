@@ -19,6 +19,27 @@ export interface AnnualRecord {
     workersTotalSalary: bigint;
     miscellaneous: bigint;
 }
+export interface AnnualExtras {
+    yearLabel: string;
+    openingBalance: bigint;
+    closingBalance: bigint;
+    coffeeExpenditure: bigint;
+    paddyExpenditure: bigint;
+    arecanutExpenditure: bigint;
+    pepperExpenditure: bigint;
+}
+export interface IncomeItem {
+    id: bigint;
+    yearLabel: string;
+    name: string;
+    amount: bigint;
+}
+export interface ExpenseItem {
+    id: bigint;
+    yearLabel: string;
+    name: string;
+    amount: bigint;
+}
 export interface SalaryRecord {
     id: bigint;
     month: bigint;
@@ -84,6 +105,7 @@ export interface backendInterface {
     deleteWorker(id: bigint): Promise<boolean>;
     getAllAnnualRecords(): Promise<Array<AnnualRecord>>;
     getAnnualRecord(yearLabel: string): Promise<AnnualRecord | null>;
+    getAnnualExtras(yearLabel: string): Promise<AnnualExtras | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getEquipment(): Promise<Array<Equipment>>;
@@ -94,9 +116,16 @@ export interface backendInterface {
     getWorkers(): Promise<Array<Worker>>;
     isCallerAdmin(): Promise<boolean>;
     saveAnnualRecord(yearLabel: string, coffeeIncome: bigint, pepperIncome: bigint, arecanutIncome: bigint, paddyIncome: bigint, fertilisers: bigint, irrigation: bigint, managerSalary: bigint, workersTotalSalary: bigint, miscellaneous: bigint): Promise<void>;
+    saveAnnualExtras(yearLabel: string, openingBalance: bigint, closingBalance: bigint): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     updateEquipment(id: bigint, name: string, equipmentType: string, purchaseDate: string, cost: bigint, condition: string, notes: string): Promise<boolean>;
     updateSalary(id: bigint, workerId: bigint, month: bigint, year: bigint, amount: bigint, paid: boolean): Promise<boolean>;
     updateTransaction(id: bigint, txType: TxType, category: string, amount: bigint, date: string, description: string): Promise<boolean>;
     updateWorker(id: bigint, name: string, role: string, phone: string, joinDate: string): Promise<boolean>;
+    addIncomeItem(yearLabel: string, name: string, amount: bigint): Promise<bigint>;
+    deleteIncomeItem(id: bigint): Promise<boolean>;
+    getIncomeItemsByYear(yearLabel: string): Promise<Array<IncomeItem>>;
+    addExpenseItem(yearLabel: string, name: string, amount: bigint): Promise<bigint>;
+    deleteExpenseItem(id: bigint): Promise<boolean>;
+    getExpenseItemsByYear(yearLabel: string): Promise<Array<ExpenseItem>>;
 }

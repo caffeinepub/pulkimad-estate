@@ -261,7 +261,7 @@ actor {
     equipMap.values().toArray();
   };
 
-  // ─── Annual Records ──────────────────────────────────────────────
+  // ─── Annual Records (legacy, kept for backward compat) ───────────
   public type AnnualRecord = {
     yearLabel : Text;
     coffeeIncome : Nat;
@@ -318,6 +318,161 @@ actor {
       Runtime.trap("Unauthorized: Only users can view annual records");
     };
     annualMap.values().toArray();
+  };
+
+  // ─── Annual Extras (opening/closing balance + legacy crop fields) ─
+  // NOTE: crop expenditure fields kept for stable variable compatibility.
+  // New dynamic income/expense items are stored in incomeItemMap/expenseItemMap.
+  public type AnnualExtras = {
+    yearLabel : Text;
+    openingBalance : Nat;
+    closingBalance : Nat;
+    coffeeExpenditure : Nat;
+    paddyExpenditure : Nat;
+    arecanutExpenditure : Nat;
+    pepperExpenditure : Nat;
+  };
+
+  var extrasMap : Map.Map<Text, AnnualExtras> = Map.empty();
+
+  public shared ({ caller }) func saveAnnualExtras(
+    yearLabel : Text,
+    openingBalance : Nat,
+    closingBalance : Nat
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save annual extras");
+    };
+    // Preserve existing crop expenditure values if they exist
+    let existing = extrasMap.get(yearLabel);
+    let coffeeExp = switch (existing) { case (?e) e.coffeeExpenditure; case null 0 };
+    let paddyExp = switch (existing) { case (?e) e.paddyExpenditure; case null 0 };
+    let arecanutExp = switch (existing) { case (?e) e.arecanutExpenditure; case null 0 };
+    let pepperExp = switch (existing) { case (?e) e.pepperExpenditure; case null 0 };
+    extrasMap.add(yearLabel, {
+      yearLabel;
+      openingBalance;
+      closingBalance;
+      coffeeExpenditure = coffeeExp;
+      paddyExpenditure = paddyExp;
+      arecanutExpenditure = arecanutExp;
+      pepperExpenditure = pepperExp;
+    });
+  };
+
+  public query ({ caller }) func getAnnualExtras(yearLabel : Text) : async ?AnnualExtras {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view annual extras");
+    };
+    extrasMap.get(yearLabel);
+  };
+
+  // ─── Income Items (dynamic per year) ────────────────────────────
+  public type IncomeItem = {
+    id : Nat;
+    yearLabel : Text;
+    name : Text;
+    amount : Nat;
+  };
+
+  var incomeItemMap : Map.Map<Nat, IncomeItem> = Map.empty();
+  var incomeItemCounter = 0;
+
+  public shared ({ caller }) func addIncomeItem(yearLabel : Text, name : Text, amount : Nat) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    incomeItemCounter += 1;
+    incomeItemMap.add(incomeItemCounter, { id = incomeItemCounter; yearLabel; name; amount });
+    incomeItemCounter;
+  };
+
+  public shared ({ caller }) func updateIncomeItem(id : Nat, name : Text, amount : Nat) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    switch (incomeItemMap.get(id)) {
+      case (null) { false };
+      case (?item) {
+        incomeItemMap.add(id, { id; yearLabel = item.yearLabel; name; amount });
+        true;
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteIncomeItem(id : Nat) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    switch (incomeItemMap.get(id)) {
+      case (null) { false };
+      case (?_) {
+        incomeItemMap.remove(id);
+        true;
+      };
+    };
+  };
+
+  public query ({ caller }) func getIncomeItemsByYear(yearLabel : Text) : async [IncomeItem] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    let buf = incomeItemMap.values();
+    buf.filter(func(item : IncomeItem) : Bool { item.yearLabel == yearLabel }).toArray();
+  };
+
+  // ─── Expense Items (dynamic per year) ───────────────────────────
+  public type ExpenseItem = {
+    id : Nat;
+    yearLabel : Text;
+    name : Text;
+    amount : Nat;
+  };
+
+  var expenseItemMap : Map.Map<Nat, ExpenseItem> = Map.empty();
+  var expenseItemCounter = 0;
+
+  public shared ({ caller }) func addExpenseItem(yearLabel : Text, name : Text, amount : Nat) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    expenseItemCounter += 1;
+    expenseItemMap.add(expenseItemCounter, { id = expenseItemCounter; yearLabel; name; amount });
+    expenseItemCounter;
+  };
+
+  public shared ({ caller }) func updateExpenseItem(id : Nat, name : Text, amount : Nat) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    switch (expenseItemMap.get(id)) {
+      case (null) { false };
+      case (?item) {
+        expenseItemMap.add(id, { id; yearLabel = item.yearLabel; name; amount });
+        true;
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteExpenseItem(id : Nat) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    switch (expenseItemMap.get(id)) {
+      case (null) { false };
+      case (?_) {
+        expenseItemMap.remove(id);
+        true;
+      };
+    };
+  };
+
+  public query ({ caller }) func getExpenseItemsByYear(yearLabel : Text) : async [ExpenseItem] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    let buf = expenseItemMap.values();
+    buf.filter(func(item : ExpenseItem) : Bool { item.yearLabel == yearLabel }).toArray();
   };
 
   // ─── Summary ─────────────────────────────────────────────────────

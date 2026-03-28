@@ -9,7 +9,7 @@
 import { Actor, HttpAgent, type HttpAgentOptions, type ActorConfig, type Agent, type ActorSubclass } from "@icp-sdk/core/agent";
 import type { Principal } from "@icp-sdk/core/principal";
 import { idlFactory, type _SERVICE } from "./declarations/backend.did";
-import type { AnnualRecord } from "./backend.d";
+import type { AnnualRecord, AnnualExtras, IncomeItem, ExpenseItem } from "./backend.d";
 export interface Some<T> {
     __kind__: "Some";
     value: T;
@@ -168,6 +168,12 @@ export interface backendInterface {
     updateSalary(id: bigint, workerId: bigint, month: bigint, year: bigint, amount: bigint, paid: boolean): Promise<boolean>;
     updateTransaction(id: bigint, txType: TxType, category: string, amount: bigint, date: string, description: string): Promise<boolean>;
     updateWorker(id: bigint, name: string, role: string, phone: string, joinDate: string): Promise<boolean>;
+    addIncomeItem(yearLabel: string, name: string, amount: bigint): Promise<bigint>;
+    deleteIncomeItem(id: bigint): Promise<boolean>;
+    getIncomeItemsByYear(yearLabel: string): Promise<Array<IncomeItem>>;
+    addExpenseItem(yearLabel: string, name: string, amount: bigint): Promise<bigint>;
+    deleteExpenseItem(id: bigint): Promise<boolean>;
+    getExpenseItemsByYear(yearLabel: string): Promise<Array<ExpenseItem>>;
 }
 import type { Transaction as _Transaction, TxType as _TxType, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -548,6 +554,118 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getAnnualRecord(arg0);
             return result.length === 0 ? null : result[0];
+        }
+    }
+    async saveAnnualExtras(arg0: string, arg1: bigint, arg2: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveAnnualExtras(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveAnnualExtras(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async getAnnualExtras(arg0) {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAnnualExtras(arg0);
+                return result.length === 0 ? null : result[0];
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAnnualExtras(arg0);
+            return result.length === 0 ? null : result[0];
+        }
+    }
+    async addIncomeItem(arg0: string, arg1: string, arg2: bigint): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addIncomeItem(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addIncomeItem(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async deleteIncomeItem(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteIncomeItem(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteIncomeItem(arg0);
+            return result;
+        }
+    }
+    async getIncomeItemsByYear(arg0: string): Promise<Array<IncomeItem>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getIncomeItemsByYear(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getIncomeItemsByYear(arg0);
+            return result;
+        }
+    }
+    async addExpenseItem(arg0: string, arg1: string, arg2: bigint): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addExpenseItem(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addExpenseItem(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async deleteExpenseItem(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteExpenseItem(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteExpenseItem(arg0);
+            return result;
+        }
+    }
+    async getExpenseItemsByYear(arg0: string): Promise<Array<ExpenseItem>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getExpenseItemsByYear(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getExpenseItemsByYear(arg0);
+            return result;
         }
     }
 }

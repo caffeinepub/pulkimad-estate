@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AnnualExtras,
   AnnualRecord,
   Equipment,
+  ExpenseItem,
   backendInterface as FullBackend,
+  IncomeItem,
   SalaryRecord,
   Summary,
   Transaction,
@@ -348,4 +351,110 @@ export function useAnnualRecordMutation() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["annualRecords"] }),
   });
   return { save };
+}
+
+export function useAnnualExtras(yearLabel: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<AnnualExtras | null>({
+    queryKey: ["annualExtras", yearLabel],
+    queryFn: async () => {
+      if (!actor) return null;
+      return getBackend(actor).getAnnualExtras(yearLabel);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAnnualExtrasMutation() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  const save = useMutation({
+    mutationFn: (
+      v: Pick<AnnualExtras, "yearLabel" | "openingBalance" | "closingBalance">,
+    ) => {
+      if (!actor) throw new Error("Backend not ready. Please wait.");
+      return getBackend(actor).saveAnnualExtras(
+        v.yearLabel,
+        v.openingBalance,
+        v.closingBalance,
+      );
+    },
+    onSuccess: (_, v) =>
+      qc.invalidateQueries({ queryKey: ["annualExtras", v.yearLabel] }),
+  });
+  return { save };
+}
+
+export function useIncomeItems(yearLabel: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<IncomeItem[]>({
+    queryKey: ["incomeItems", yearLabel],
+    queryFn: async () => {
+      if (!actor) return [];
+      return getBackend(actor).getIncomeItemsByYear(yearLabel);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useIncomeItemMutations(yearLabel: string) {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["incomeItems", yearLabel] });
+
+  const add = useMutation({
+    mutationFn: (v: { name: string; amount: bigint }) => {
+      if (!actor) throw new Error("Backend not ready. Please wait.");
+      return getBackend(actor).addIncomeItem(yearLabel, v.name, v.amount);
+    },
+    onSuccess: invalidate,
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: bigint) => {
+      if (!actor) throw new Error("Backend not ready. Please wait.");
+      return getBackend(actor).deleteIncomeItem(id);
+    },
+    onSuccess: invalidate,
+  });
+
+  return { add, remove };
+}
+
+export function useExpenseItems(yearLabel: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<ExpenseItem[]>({
+    queryKey: ["expenseItems", yearLabel],
+    queryFn: async () => {
+      if (!actor) return [];
+      return getBackend(actor).getExpenseItemsByYear(yearLabel);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useExpenseItemMutations(yearLabel: string) {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["expenseItems", yearLabel] });
+
+  const add = useMutation({
+    mutationFn: (v: { name: string; amount: bigint }) => {
+      if (!actor) throw new Error("Backend not ready. Please wait.");
+      return getBackend(actor).addExpenseItem(yearLabel, v.name, v.amount);
+    },
+    onSuccess: invalidate,
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: bigint) => {
+      if (!actor) throw new Error("Backend not ready. Please wait.");
+      return getBackend(actor).deleteExpenseItem(id);
+    },
+    onSuccess: invalidate,
+  });
+
+  return { add, remove };
 }

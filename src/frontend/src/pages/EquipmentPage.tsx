@@ -87,7 +87,8 @@ interface EquipmentPageProps {
 export function EquipmentPage({ yearFilter }: EquipmentPageProps) {
   const { data: allEquipment = [], isLoading } = useEquipment();
   const { add, update, remove } = useEquipmentMutations();
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const backendNotReady = !actor || isFetching;
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Equipment | null>(null);
   const [form, setForm] = useState<EqForm>(emptyForm(yearFilter));
@@ -139,8 +140,9 @@ export function EquipmentPage({ yearFilter }: EquipmentPageProps) {
         toast.success("Equipment added");
       }
       setShowModal(false);
-    } catch {
-      toast.error("Failed to save equipment");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to save equipment");
     }
   }
 
@@ -150,8 +152,9 @@ export function EquipmentPage({ yearFilter }: EquipmentPageProps) {
       await remove.mutateAsync(deleteId);
       toast.success("Equipment deleted");
       setDeleteId(null);
-    } catch {
-      toast.error("Failed to delete equipment");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to delete equipment");
     }
   }
 
@@ -171,9 +174,18 @@ export function EquipmentPage({ yearFilter }: EquipmentPageProps) {
         <Button
           data-ocid="equipment.add_equipment.primary_button"
           onClick={openAdd}
+          disabled={backendNotReady}
           className="bg-estate-green hover:bg-estate-green-mid text-primary-foreground"
         >
-          <Plus className="w-4 h-4 mr-2" /> Add Equipment
+          {backendNotReady ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Connecting...
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 mr-2" /> Add Equipment
+            </>
+          )}
         </Button>
       </div>
 
@@ -418,13 +430,13 @@ export function EquipmentPage({ yearFilter }: EquipmentPageProps) {
             <Button
               data-ocid="equipment.submit_button"
               onClick={handleSubmit}
-              disabled={add.isPending || update.isPending || !actor}
+              disabled={add.isPending || update.isPending || backendNotReady}
               className="bg-estate-green hover:bg-estate-green-mid text-primary-foreground"
             >
-              {(add.isPending || update.isPending) && (
+              {(add.isPending || update.isPending || backendNotReady) && (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               )}
-              {editing ? "Update" : "Add"}
+              {backendNotReady ? "Connecting..." : editing ? "Update" : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>

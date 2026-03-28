@@ -20,6 +20,27 @@ export const AnnualRecord = IDL.Record({
   'workersTotalSalary' : IDL.Nat,
   'miscellaneous' : IDL.Nat,
 });
+export const AnnualExtras = IDL.Record({
+  'yearLabel' : IDL.Text,
+  'openingBalance' : IDL.Nat,
+  'closingBalance' : IDL.Nat,
+  'coffeeExpenditure' : IDL.Nat,
+  'paddyExpenditure' : IDL.Nat,
+  'arecanutExpenditure' : IDL.Nat,
+  'pepperExpenditure' : IDL.Nat,
+});
+export const IncomeItem = IDL.Record({
+  'id' : IDL.Nat,
+  'yearLabel' : IDL.Text,
+  'name' : IDL.Text,
+  'amount' : IDL.Nat,
+});
+export const ExpenseItem = IDL.Record({
+  'id' : IDL.Nat,
+  'yearLabel' : IDL.Text,
+  'name' : IDL.Text,
+  'amount' : IDL.Nat,
+});
 export const TxType = IDL.Variant({ 'credit' : IDL.Null, 'debit' : IDL.Null });
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
@@ -98,6 +119,7 @@ export const idlService = IDL.Service({
   'deleteWorker' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'getAllAnnualRecords' : IDL.Func([], [IDL.Vec(AnnualRecord)], ['query']),
   'getAnnualRecord' : IDL.Func([IDL.Text], [IDL.Opt(AnnualRecord)], ['query']),
+  'getAnnualExtras' : IDL.Func([IDL.Text], [IDL.Opt(AnnualExtras)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getEquipment' : IDL.Func([], [IDL.Vec(Equipment)], ['query']),
@@ -113,6 +135,11 @@ export const idlService = IDL.Service({
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveAnnualRecord' : IDL.Func(
       [IDL.Text, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat],
+      [],
+      [],
+    ),
+  'saveAnnualExtras' : IDL.Func(
+      [IDL.Text, IDL.Nat, IDL.Nat],
       [],
       [],
     ),
@@ -137,6 +164,12 @@ export const idlService = IDL.Service({
       [IDL.Bool],
       [],
     ),
+  'addIncomeItem' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [IDL.Nat], []),
+  'deleteIncomeItem' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'getIncomeItemsByYear' : IDL.Func([IDL.Text], [IDL.Vec(IncomeItem)], ['query']),
+  'addExpenseItem' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [IDL.Nat], []),
+  'deleteExpenseItem' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'getExpenseItemsByYear' : IDL.Func([IDL.Text], [IDL.Vec(ExpenseItem)], ['query']),
 });
 
 export const idlInitArgs = [];
@@ -153,6 +186,27 @@ export const idlFactory = ({ IDL }) => {
     'managerSalary' : IDL.Nat,
     'workersTotalSalary' : IDL.Nat,
     'miscellaneous' : IDL.Nat,
+  });
+  const AnnualExtras = IDL.Record({
+    'yearLabel' : IDL.Text,
+    'openingBalance' : IDL.Nat,
+    'closingBalance' : IDL.Nat,
+    'coffeeExpenditure' : IDL.Nat,
+    'paddyExpenditure' : IDL.Nat,
+    'arecanutExpenditure' : IDL.Nat,
+    'pepperExpenditure' : IDL.Nat,
+  });
+  const IncomeItem = IDL.Record({
+    'id' : IDL.Nat,
+    'yearLabel' : IDL.Text,
+    'name' : IDL.Text,
+    'amount' : IDL.Nat,
+  });
+  const ExpenseItem = IDL.Record({
+    'id' : IDL.Nat,
+    'yearLabel' : IDL.Text,
+    'name' : IDL.Text,
+    'amount' : IDL.Nat,
   });
   const TxType = IDL.Variant({ 'credit' : IDL.Null, 'debit' : IDL.Null });
   const UserRole = IDL.Variant({
@@ -232,6 +286,7 @@ export const idlFactory = ({ IDL }) => {
     'deleteWorker' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'getAllAnnualRecords' : IDL.Func([], [IDL.Vec(AnnualRecord)], ['query']),
     'getAnnualRecord' : IDL.Func([IDL.Text], [IDL.Opt(AnnualRecord)], ['query']),
+    'getAnnualExtras' : IDL.Func([IDL.Text], [IDL.Opt(AnnualExtras)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getEquipment' : IDL.Func([], [IDL.Vec(Equipment)], ['query']),
@@ -247,6 +302,11 @@ export const idlFactory = ({ IDL }) => {
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveAnnualRecord' : IDL.Func(
         [IDL.Text, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat],
+        [],
+        [],
+      ),
+    'saveAnnualExtras' : IDL.Func(
+        [IDL.Text, IDL.Nat, IDL.Nat],
         [],
         [],
       ),
@@ -271,6 +331,12 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Bool],
         [],
       ),
+    'addIncomeItem' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [IDL.Nat], []),
+    'deleteIncomeItem' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'getIncomeItemsByYear' : IDL.Func([IDL.Text], [IDL.Vec(IncomeItem)], ['query']),
+    'addExpenseItem' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [IDL.Nat], []),
+    'deleteExpenseItem' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'getExpenseItemsByYear' : IDL.Func([IDL.Text], [IDL.Vec(ExpenseItem)], ['query']),
   });
 };
 

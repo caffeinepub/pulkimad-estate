@@ -4,15 +4,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Save, TrendingDown, TrendingUp } from "lucide-react";
-import { motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import type { AnnualRecord } from "../backend.d";
 import {
-  useAnnualRecordMutation,
-  useAnnualRecords,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import type { AnnualExtras } from "../backend.d";
+import { useActor } from "../hooks/useActor";
+import {
+  useAnnualExtras,
+  useAnnualExtrasMutation,
   useEquipment,
+  useExpenseItemMutations,
+  useExpenseItems,
+  useIncomeItemMutations,
+  useIncomeItems,
   useTransactions,
 } from "../hooks/useQueries";
 import { formatINR } from "../utils/format";
@@ -31,69 +44,134 @@ interface YearProfitLossPageProps {
   yearLabel: string;
 }
 
-type FieldKey =
-  | "coffeeIncome"
-  | "pepperIncome"
-  | "arecanutIncome"
-  | "paddyIncome"
-  | "fertilisers"
-  | "irrigation"
-  | "managerSalary"
-  | "workersTotalSalary"
-  | "miscellaneous";
+function fade(delay = 0) {
+  return {
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.4, delay },
+  };
+}
 
-const EMPTY_RECORD = (yearLabel: string): AnnualRecord => ({
-  yearLabel,
-  coffeeIncome: BigInt(0),
-  pepperIncome: BigInt(0),
-  arecanutIncome: BigInt(0),
-  paddyIncome: BigInt(0),
-  fertilisers: BigInt(0),
-  irrigation: BigInt(0),
-  managerSalary: BigInt(0),
-  workersTotalSalary: BigInt(0),
-  miscellaneous: BigInt(0),
-});
+interface AddItemRowProps {
+  onAdd: (name: string, amount: bigint) => Promise<unknown>;
+  isPending: boolean;
+  placeholder: string;
+  ocidPrefix: string;
+  disabled?: boolean;
+}
+
+function AddItemRow({
+  onAdd,
+  isPending,
+  placeholder,
+  ocidPrefix,
+  disabled,
+}: AddItemRowProps) {
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+
+  async function handleAdd() {
+    const trimmed = name.trim();
+    const val = Number(amount);
+    if (!trimmed || !val || val <= 0) {
+      toast.error("Enter a valid name and amount");
+      return;
+    }
+    await onAdd(trimmed, BigInt(Math.round(val)));
+    setName("");
+    setAmount("");
+  }
+
+  return (
+    <div className="flex gap-2 mt-3 pt-3 border-t border-dashed border-border">
+      <Input
+        data-ocid={`${ocidPrefix}.input`}
+        placeholder={placeholder}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        className="h-8 text-sm flex-1"
+        onKeyDown={(e) => e.key === "Enter" && !disabled && handleAdd()}
+        disabled={disabled}
+      />
+      <Input
+        data-ocid={`${ocidPrefix}.amount_input`}
+        type="number"
+        min="0"
+        placeholder="Amount (₹)"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        className="h-8 text-sm w-36"
+        onKeyDown={(e) => e.key === "Enter" && !disabled && handleAdd()}
+        disabled={disabled}
+      />
+      <div className="relative">
+        <Button
+          data-ocid={`${ocidPrefix}.add_button`}
+          size="sm"
+          onClick={handleAdd}
+          disabled={isPending || disabled}
+          title={disabled ? "Backend connecting..." : undefined}
+          className="h-8 px-3 bg-estate-green hover:bg-estate-green-mid text-primary-foreground"
+        >
+          {isPending ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <Plus className="w-3 h-3" />
+          )}
+        </Button>
+        {disabled && (
+          <span className="absolute -bottom-5 right-0 text-xs text-muted-foreground whitespace-nowrap">
+            Connecting...
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type SaveStatus = "idle" | "saving" | "saved";
 
 export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
-  const { data: records = [], isLoading: recordsLoading } = useAnnualRecords();
+  const { actor, isFetching: actorFetching } = useActor();
+  const { data: extrasData, isLoading: extrasLoading } =
+    useAnnualExtras(yearLabel);
   const { data: allTransactions = [], isLoading: txLoading } =
     useTransactions();
   const { data: allEquipment = [], isLoading: eqLoading } = useEquipment();
-  const { save } = useAnnualRecordMutation();
+  const { data: incomeItems = [], isLoading: incomeLoading } =
+    useIncomeItems(yearLabel);
+  const { data: expenseItems = [], isLoading: expenseLoading } =
+    useExpenseItems(yearLabel);
+  const { save: saveExtras } = useAnnualExtrasMutation();
+  const incomeMutations = useIncomeItemMutations(yearLabel);
+  const expenseMutations = useExpenseItemMutations(yearLabel);
 
-  const isLoading = recordsLoading || txLoading || eqLoading;
+  const isLoading =
+    txLoading || eqLoading || extrasLoading || incomeLoading || expenseLoading;
 
-  const existing = records.find((r) => r.yearLabel === yearLabel);
-  const [form, setForm] = useState<Record<FieldKey, string>>(() => ({
-    coffeeIncome: "0",
-    pepperIncome: "0",
-    arecanutIncome: "0",
-    paddyIncome: "0",
-    fertilisers: "0",
-    irrigation: "0",
-    managerSalary: "0",
-    workersTotalSalary: "0",
-    miscellaneous: "0",
-  }));
+  const [extras, setExtras] = useState({
+    openingBalance: "0",
+    closingBalance: "0",
+  });
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted = useRef(false);
 
   useEffect(() => {
-    if (existing) {
-      setForm({
-        coffeeIncome: String(Number(existing.coffeeIncome)),
-        pepperIncome: String(Number(existing.pepperIncome)),
-        arecanutIncome: String(Number(existing.arecanutIncome)),
-        paddyIncome: String(Number(existing.paddyIncome)),
-        fertilisers: String(Number(existing.fertilisers)),
-        irrigation: String(Number(existing.irrigation)),
-        managerSalary: String(Number(existing.managerSalary)),
-        workersTotalSalary: String(Number(existing.workersTotalSalary)),
-        miscellaneous: String(Number(existing.miscellaneous)),
+    if (extrasData) {
+      setExtras({
+        openingBalance: String(Number(extrasData.openingBalance)),
+        closingBalance: String(Number(extrasData.closingBalance)),
       });
     }
-  }, [existing]);
+  }, [extrasData]);
 
-  // Transaction-derived data
+  // Mark as mounted after first render so autosave doesn't fire immediately
+  useEffect(() => {
+    isMounted.current = true;
+  }, []);
+
   const yearTransactions = allTransactions.filter((t) =>
     isInFinancialYear(t.date, yearLabel),
   );
@@ -109,54 +187,65 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
     .reduce((s, t) => s + Number(t.amount), 0);
   const eqCost = yearEquipment.reduce((s, e) => s + Number(e.cost), 0);
 
-  // Annual record derived numbers
-  const recordIncome =
-    Number(form.coffeeIncome || 0) +
-    Number(form.pepperIncome || 0) +
-    Number(form.arecanutIncome || 0) +
-    Number(form.paddyIncome || 0);
+  const incomeItemsTotal = incomeItems.reduce(
+    (s, i) => s + Number(i.amount),
+    0,
+  );
+  const expenseItemsTotal = expenseItems.reduce(
+    (s, i) => s + Number(i.amount),
+    0,
+  );
 
-  const recordExpenses =
-    Number(form.fertilisers || 0) +
-    Number(form.irrigation || 0) +
-    Number(form.managerSalary || 0) +
-    Number(form.workersTotalSalary || 0) +
-    Number(form.miscellaneous || 0);
-
-  const totalIncome = txIncome + recordIncome;
-  const totalExpenses = txExpenses + eqCost + recordExpenses;
+  const totalIncome = txIncome + incomeItemsTotal;
+  const totalExpenses = txExpenses + eqCost + expenseItemsTotal;
   const netPL = totalIncome - totalExpenses;
   const isProfit = netPL >= 0;
-
   const maxVal = Math.max(totalIncome, totalExpenses, 1);
 
-  async function handleSave() {
-    try {
-      const record: AnnualRecord = {
-        ...EMPTY_RECORD(yearLabel),
-        coffeeIncome: BigInt(Number(form.coffeeIncome) || 0),
-        pepperIncome: BigInt(Number(form.pepperIncome) || 0),
-        arecanutIncome: BigInt(Number(form.arecanutIncome) || 0),
-        paddyIncome: BigInt(Number(form.paddyIncome) || 0),
-        fertilisers: BigInt(Number(form.fertilisers) || 0),
-        irrigation: BigInt(Number(form.irrigation) || 0),
-        managerSalary: BigInt(Number(form.managerSalary) || 0),
-        workersTotalSalary: BigInt(Number(form.workersTotalSalary) || 0),
-        miscellaneous: BigInt(Number(form.miscellaneous) || 0),
-      };
-      await save.mutateAsync(record);
-      toast.success("Annual record saved");
-    } catch {
-      toast.error("Failed to save annual record");
-    }
-  }
+  const openingBalance = Number(extras.openingBalance || 0);
+  const closingBalance = Number(extras.closingBalance || 0);
 
-  const setField = (key: FieldKey, value: string) =>
-    setForm((p) => ({ ...p, [key]: value }));
+  const handleSaveBalances = useCallback(
+    async (ob: string, cb: string) => {
+      setSaveStatus("saving");
+      try {
+        await saveExtras.mutateAsync({
+          yearLabel,
+          openingBalance: BigInt(Number(ob) || 0),
+          closingBalance: BigInt(Number(cb) || 0),
+        });
+        setSaveStatus("saved");
+        if (savedTimer.current) clearTimeout(savedTimer.current);
+        savedTimer.current = setTimeout(() => setSaveStatus("idle"), 2000);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(msg || "Failed to save balances");
+        setSaveStatus("idle");
+      }
+    },
+    [yearLabel, saveExtras],
+  );
+
+  // Autosave debounce for balances
+  useEffect(() => {
+    if (!isMounted.current) return;
+    const ob = extras.openingBalance;
+    const cb = extras.closingBalance;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      handleSaveBalances(ob, cb);
+    }, 1500);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [extras.openingBalance, extras.closingBalance, handleSaveBalances]);
+
+  const backendNotReady = !actor || actorFetching;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <motion.div {...fade(0)} className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-2xl font-bold text-estate-text">
             Profit / Loss
@@ -165,27 +254,65 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
             {yearLabel} — Full financial breakdown
           </p>
         </div>
-        <Button
-          data-ocid="pl.save_button"
-          onClick={handleSave}
-          disabled={save.isPending}
-          className="bg-estate-green hover:bg-estate-green-mid text-primary-foreground"
-        >
-          {save.isPending ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4 mr-2" />
+        {/* Autosave status indicator */}
+        <div className="flex items-center gap-2 text-sm">
+          {saveStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Saving...
+            </span>
           )}
-          Save
-        </Button>
-      </div>
+          {saveStatus === "saved" && (
+            <span className="flex items-center gap-1.5 text-estate-green-mid font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Saved
+            </span>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Opening Balance */}
+      <motion.div {...fade(0.05)}>
+        <Card className="border-2 border-blue-200 shadow-card bg-blue-50/50">
+          <CardContent className="py-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <Wallet className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-blue-800">Opening Balance</p>
+                <p className="text-xs text-blue-600">
+                  Balance at start of {yearLabel}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Label className="text-sm text-blue-700 w-28 shrink-0">
+                Amount (₹)
+              </Label>
+              <Input
+                data-ocid="pl.openingbalance.input"
+                type="number"
+                min="0"
+                value={extras.openingBalance}
+                onChange={(e) =>
+                  setExtras((p) => ({ ...p, openingBalance: e.target.value }))
+                }
+                className="h-9 text-sm max-w-xs border-blue-200 focus:ring-blue-400"
+                placeholder="e.g. 100000"
+              />
+              {!isLoading && openingBalance > 0 && (
+                <span className="text-blue-700 font-bold text-sm">
+                  {formatINR(openingBalance)}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Net P/L Hero */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-      >
+      <motion.div {...fade(0.1)}>
         <Card
           data-ocid="pl.result.card"
           className={`shadow-card-hover border-2 text-center ${
@@ -216,13 +343,17 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
             </div>
             <div className="grid grid-cols-2 gap-4 mt-6 max-w-sm mx-auto">
               <div className="bg-green-50 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Income</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Total Income
+                </p>
                 <p className="font-bold text-estate-green-mid">
                   {formatINR(totalIncome)}
                 </p>
               </div>
               <div className="bg-red-50 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Expenses</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Total Expenses
+                </p>
                 <p className="font-bold text-destructive">
                   {formatINR(totalExpenses)}
                 </p>
@@ -234,11 +365,7 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Income Section */}
-        <motion.div
-          initial={{ opacity: 0, x: -16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.15 }}
-        >
+        <motion.div {...fade(0.15)}>
           <Card data-ocid="pl.income.card" className="shadow-card h-full">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold text-estate-green-mid">
@@ -248,33 +375,83 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
                 Total: {formatINR(totalIncome)}
               </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="pb-2 border-b border-border">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Crop Income (Manual)
-                </p>
-                {(
-                  [
-                    ["coffeeIncome", "Coffee Income"],
-                    ["pepperIncome", "Pepper Income"],
-                    ["arecanutIncome", "Arecanut Income"],
-                    ["paddyIncome", "Paddy Income"],
-                  ] as [FieldKey, string][]
-                ).map(([key, label]) => (
-                  <div key={key} className="mb-3">
-                    <Label className="text-xs mb-1 block">{label} (₹)</Label>
-                    <Input
-                      data-ocid={`pl.${key}.input`}
-                      type="number"
-                      min="0"
-                      value={form[key]}
-                      onChange={(e) => setField(key, e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-              <div>
+            <CardContent className="space-y-1">
+              {incomeLoading ? (
+                <div data-ocid="pl.income.loading_state" className="space-y-2">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : (
+                <AnimatePresence>
+                  {incomeItems.length === 0 && (
+                    <motion.p
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="text-xs text-muted-foreground italic py-2"
+                      data-ocid="pl.income.empty_state"
+                    >
+                      No income entries yet. Add one below.
+                    </motion.p>
+                  )}
+                  {incomeItems.map((item, idx) => (
+                    <motion.div
+                      key={String(item.id)}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 group"
+                      data-ocid={`pl.income.item.${idx + 1}`}
+                    >
+                      <span className="text-sm font-medium flex-1 truncate">
+                        {item.name}
+                      </span>
+                      <span className="text-sm font-semibold text-estate-green-mid mx-3">
+                        +{formatINR(Number(item.amount))}
+                      </span>
+                      <button
+                        type="button"
+                        data-ocid={`pl.income.delete_button.${idx + 1}`}
+                        onClick={() =>
+                          incomeMutations.remove
+                            .mutateAsync(item.id)
+                            .catch((e: unknown) => {
+                              const msg =
+                                e instanceof Error ? e.message : String(e);
+                              toast.error(msg || "Failed to delete");
+                            })
+                        }
+                        disabled={
+                          incomeMutations.remove.isPending || backendNotReady
+                        }
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+
+              <AddItemRow
+                onAdd={(name, amount) =>
+                  incomeMutations.add
+                    .mutateAsync({ name, amount })
+                    .then(() => toast.success("Income added"))
+                    .catch((e: unknown) => {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      toast.error(msg || "Failed to add");
+                    })
+                }
+                isPending={incomeMutations.add.isPending}
+                placeholder="Crop / income source"
+                ocidPrefix="pl.income"
+                disabled={backendNotReady}
+              />
+
+              <div className="pt-3 mt-3 border-t border-border">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   From Transactions
                 </p>
@@ -285,6 +462,7 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
                   </span>
                 </div>
               </div>
+
               <div className="mt-3">
                 <Progress
                   value={(totalIncome / maxVal) * 100}
@@ -296,11 +474,7 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
         </motion.div>
 
         {/* Expenses Section */}
-        <motion.div
-          initial={{ opacity: 0, x: 16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+        <motion.div {...fade(0.2)}>
           <Card data-ocid="pl.expenses.card" className="shadow-card h-full">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold text-destructive">
@@ -310,34 +484,86 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
                 Total: {formatINR(totalExpenses)}
               </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="pb-2 border-b border-border">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Operating Expenses (Manual)
-                </p>
-                {(
-                  [
-                    ["fertilisers", "Fertilisers"],
-                    ["irrigation", "Irrigation"],
-                    ["managerSalary", "Manager's Salary"],
-                    ["workersTotalSalary", "Workers Total Salary"],
-                    ["miscellaneous", "Miscellaneous"],
-                  ] as [FieldKey, string][]
-                ).map(([key, label]) => (
-                  <div key={key} className="mb-3">
-                    <Label className="text-xs mb-1 block">{label} (₹)</Label>
-                    <Input
-                      data-ocid={`pl.${key}.input`}
-                      type="number"
-                      min="0"
-                      value={form[key]}
-                      onChange={(e) => setField(key, e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-2">
+            <CardContent className="space-y-1">
+              {expenseLoading ? (
+                <div
+                  data-ocid="pl.expenses.loading_state"
+                  className="space-y-2"
+                >
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : (
+                <AnimatePresence>
+                  {expenseItems.length === 0 && (
+                    <motion.p
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="text-xs text-muted-foreground italic py-2"
+                      data-ocid="pl.expenses.empty_state"
+                    >
+                      No expense entries yet. Add one below.
+                    </motion.p>
+                  )}
+                  {expenseItems.map((item, idx) => (
+                    <motion.div
+                      key={String(item.id)}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 group"
+                      data-ocid={`pl.expenses.item.${idx + 1}`}
+                    >
+                      <span className="text-sm font-medium flex-1 truncate">
+                        {item.name}
+                      </span>
+                      <span className="text-sm font-semibold text-destructive mx-3">
+                        -{formatINR(Number(item.amount))}
+                      </span>
+                      <button
+                        type="button"
+                        data-ocid={`pl.expenses.delete_button.${idx + 1}`}
+                        onClick={() =>
+                          expenseMutations.remove
+                            .mutateAsync(item.id)
+                            .catch((e: unknown) => {
+                              const msg =
+                                e instanceof Error ? e.message : String(e);
+                              toast.error(msg || "Failed to delete");
+                            })
+                        }
+                        disabled={
+                          expenseMutations.remove.isPending || backendNotReady
+                        }
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+
+              <AddItemRow
+                onAdd={(name, amount) =>
+                  expenseMutations.add
+                    .mutateAsync({ name, amount })
+                    .then(() => toast.success("Expense added"))
+                    .catch((e: unknown) => {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      toast.error(msg || "Failed to add");
+                    })
+                }
+                isPending={expenseMutations.add.isPending}
+                placeholder="Expenditure name"
+                ocidPrefix="pl.expenses"
+                disabled={backendNotReady}
+              />
+
+              <div className="pt-3 mt-3 border-t border-border space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   From Records
                 </p>
@@ -356,6 +582,7 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
                   </span>
                 </div>
               </div>
+
               <div className="mt-3">
                 <Progress
                   value={(totalExpenses / maxVal) * 100}
@@ -366,6 +593,46 @@ export function YearProfitLossPage({ yearLabel }: YearProfitLossPageProps) {
           </Card>
         </motion.div>
       </div>
+
+      {/* Closing Balance */}
+      <motion.div {...fade(0.25)}>
+        <Card className="border-2 border-amber-200 shadow-card bg-amber-50/50">
+          <CardContent className="py-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-amber-100">
+                <Wallet className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-800">Closing Balance</p>
+                <p className="text-xs text-amber-600">
+                  Balance at end of {yearLabel}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Label className="text-sm text-amber-700 w-28 shrink-0">
+                Amount (₹)
+              </Label>
+              <Input
+                data-ocid="pl.closingbalance.input"
+                type="number"
+                min="0"
+                value={extras.closingBalance}
+                onChange={(e) =>
+                  setExtras((p) => ({ ...p, closingBalance: e.target.value }))
+                }
+                className="h-9 text-sm max-w-xs border-amber-200 focus:ring-amber-400"
+                placeholder="e.g. 150000"
+              />
+              {!isLoading && closingBalance > 0 && (
+                <span className="text-amber-700 font-bold text-sm">
+                  {formatINR(closingBalance)}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

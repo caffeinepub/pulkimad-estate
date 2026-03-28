@@ -87,7 +87,8 @@ interface FinancePageProps {
 export function FinancePage({ yearFilter }: FinancePageProps) {
   const { data: allTransactions = [], isLoading } = useTransactions();
   const { add, update, remove } = useTransactionMutations();
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const backendNotReady = !actor || isFetching;
   const [filter, setFilter] = useState<"all" | TxType>("all");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -151,8 +152,9 @@ export function FinancePage({ yearFilter }: FinancePageProps) {
         toast.success("Transaction added");
       }
       setShowModal(false);
-    } catch {
-      toast.error("Failed to save transaction");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to save transaction");
     }
   }
 
@@ -162,8 +164,9 @@ export function FinancePage({ yearFilter }: FinancePageProps) {
       await remove.mutateAsync(deleteId);
       toast.success("Transaction deleted");
       setDeleteId(null);
-    } catch {
-      toast.error("Failed to delete transaction");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to delete transaction");
     }
   }
 
@@ -186,9 +189,18 @@ export function FinancePage({ yearFilter }: FinancePageProps) {
         <Button
           data-ocid="finance.add_transaction.primary_button"
           onClick={openAdd}
+          disabled={backendNotReady}
           className="bg-estate-green hover:bg-estate-green-mid text-primary-foreground"
         >
-          <Plus className="w-4 h-4 mr-2" /> Add Transaction
+          {backendNotReady ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Connecting...
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 mr-2" /> Add Transaction
+            </>
+          )}
         </Button>
       </div>
 
@@ -428,11 +440,13 @@ export function FinancePage({ yearFilter }: FinancePageProps) {
             <Button
               data-ocid="finance.submit_button"
               onClick={handleSubmit}
-              disabled={isSaving || !actor}
+              disabled={isSaving || backendNotReady}
               className="bg-estate-green hover:bg-estate-green-mid text-primary-foreground"
             >
-              {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editing ? "Update" : "Add"}
+              {(isSaving || backendNotReady) && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              {backendNotReady ? "Connecting..." : editing ? "Update" : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>
